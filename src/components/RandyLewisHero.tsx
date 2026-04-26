@@ -143,6 +143,38 @@ const AnimatedBg: React.FC<{
           filter: 'blur(40px)',
         }}
       />
+      {/* Legal motif: faint scales-of-justice symbols tiled across bg */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignContent: 'flex-start',
+          gap: 0,
+          opacity: 0.04,
+          pointerEvents: 'none',
+          overflow: 'hidden',
+        }}
+      >
+        {Array.from({length: 80}).map((_, i) => (
+          <div
+            key={i}
+            style={{
+              width: 120,
+              height: 120,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 52,
+              color: accent,
+              flexShrink: 0,
+            }}
+          >
+            {i % 3 === 0 ? '⚖' : i % 3 === 1 ? '§' : '⚖'}
+          </div>
+        ))}
+      </div>
     </AbsoluteFill>
   );
 };
@@ -158,70 +190,105 @@ const PatternInterrupt: React.FC<{
 }> = ({text, frame, fps, accent, primary}) => {
   const lines = text.split('\n');
 
-  const labelOpacity = fade(frame, 0, 15);
-  const lineWidth = interpolate(frame, [8, 35], [0, 100], {
+  // Warning badge entrance (pops in first like MistakeSlide)
+  const badgeScale = spr(frame, fps, 0, 12, 150);
+  const badgeOpacity = fade(frame, 0, 12);
+
+  // Accent bar draws down
+  const barH = interpolate(frame, [10, 38], [0, 100], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
 
   return (
-    <AbsoluteFill style={{justifyContent: 'center', alignItems: 'center', padding: '0 72px'}}>
+    <AbsoluteFill style={{justifyContent: 'center', alignItems: 'flex-start', padding: '0 72px'}}>
       <AnimatedBg frame={frame} primary={primary} accent={accent} />
 
       <div style={{position: 'relative', zIndex: 1, width: '100%'}}>
-        {/* Super-label */}
+        {/* Animated warning badge */}
         <div
           style={{
-            color: accent,
-            fontFamily: FONT,
-            fontSize: 22,
-            fontWeight: 700,
-            letterSpacing: 4,
-            textTransform: 'uppercase',
-            opacity: labelOpacity,
-            marginBottom: 20,
-            textAlign: 'center',
+            display: 'flex',
+            justifyContent: 'flex-start',
+            marginBottom: 32,
+            opacity: badgeOpacity,
+            transform: `scale(${badgeScale})`,
+            transformOrigin: 'left center',
           }}
         >
-          ⚠ STOP — READ THIS FIRST
-        </div>
-
-        {/* Gold line draw-in */}
-        <div
-          style={{
-            height: 3,
-            backgroundColor: accent,
-            width: `${lineWidth}%`,
-            marginBottom: 32,
-            borderRadius: 2,
-          }}
-        />
-
-        {/* Headline lines staggered */}
-        {lines.map((line, i) => {
-          const delay = 12 + i * 14;
-          const y = interpolate(spr(frame, fps, delay), [0, 1], [36, 0]);
-          const opacity = fade(frame, delay, 16);
-          return (
-            <div
-              key={i}
+          <div
+            style={{
+              backgroundColor: `${accent}1a`,
+              border: `2px solid ${accent}`,
+              borderRadius: 50,
+              padding: '10px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <span style={{fontSize: 24}}>⚖️</span>
+            <span
               style={{
-                color: i === lines.length - 1 ? accent : WHITE,
+                color: accent,
                 fontFamily: FONT,
-                fontSize: 58,
-                fontWeight: 900,
-                lineHeight: 1.1,
-                textAlign: 'center',
-                opacity,
-                transform: `translateY(${y}px)`,
-                textShadow: '0 3px 16px rgba(0,0,0,0.5)',
-                marginBottom: 4,
+                fontSize: 20,
+                fontWeight: 700,
+                letterSpacing: 3,
+                textTransform: 'uppercase',
               }}
             >
-              {line}
-            </div>
-          );
-        })}
+              LEGAL ALERT
+            </span>
+          </div>
+        </div>
+
+        {/* Left-aligned layout: vertical accent bar + text */}
+        <div style={{display: 'flex', gap: 28, alignItems: 'stretch'}}>
+          {/* Animated vertical accent bar */}
+          <div
+            style={{
+              width: 5,
+              backgroundColor: accent,
+              borderRadius: 3,
+              height: `${barH}%`,
+              minHeight: 8,
+              alignSelf: 'flex-start',
+              marginTop: 6,
+              flexShrink: 0,
+              // grow with content
+              ...(barH >= 100 ? {alignSelf: 'stretch', height: 'auto'} : {}),
+            }}
+          />
+
+          {/* Headline lines staggered — left aligned */}
+          <div>
+            {lines.map((line, i) => {
+              const delay = 12 + i * 14;
+              const x = interpolate(spr(frame, fps, delay), [0, 1], [-30, 0]);
+              const opacity = fade(frame, delay, 16);
+              return (
+                <div
+                  key={i}
+                  style={{
+                    color: i === lines.length - 1 ? accent : WHITE,
+                    fontFamily: FONT,
+                    fontSize: 58,
+                    fontWeight: 900,
+                    lineHeight: 1.1,
+                    textAlign: 'left',
+                    opacity,
+                    transform: `translateX(${x}px)`,
+                    textShadow: '0 3px 16px rgba(0,0,0,0.5)',
+                    marginBottom: 4,
+                  }}
+                >
+                  {line}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </AbsoluteFill>
   );
