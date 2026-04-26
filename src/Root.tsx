@@ -1,45 +1,30 @@
-import { Composition } from "remotion";
-import { HelloWorld, myCompSchema } from "./HelloWorld";
-import { Logo, myCompSchema2 } from "./HelloWorld/Logo";
-
-// Each <Composition> is an entry in the sidebar!
+import "./index.css";
+import React from "react";
+import {Composition} from "remotion";
+import {CrisisToConfidenceHero} from "./components/CrisisToConfidenceHero";
+import {RandyLewisHero, randyLewisSchema, defaultProps as randyDefaultProps} from "./components/RandyLewisHero";
 
 export const RemotionRoot: React.FC = () => {
   return (
     <>
       <Composition
-        // You can take the "id" to render a video:
-        // npx remotion render HelloWorld
-        id="HelloWorld"
-        component={HelloWorld}
-        durationInFrames={150}
+        id="CrisisToConfidenceHero"
+        component={CrisisToConfidenceHero}
+        durationInFrames={30 * 45}
         fps={30}
-        width={1920}
-        height={1080}
-        // You can override these props for each render:
-        // https://www.remotion.dev/docs/parametrized-rendering
-        schema={myCompSchema}
-        defaultProps={{
-          titleText: "Welcome to Remotion",
-          titleColor: "#000000",
-          logoColor1: "#91EAE4",
-          logoColor2: "#86A8E7",
-        }}
+        width={1080}
+        height={1920}
+        defaultProps={{}}
       />
-
-      {/* Mount any React component to make it show up in the sidebar and work on it individually! */}
       <Composition
-        id="OnlyLogo"
-        component={Logo}
-        durationInFrames={150}
+        id="RandyLewisHero"
+        component={RandyLewisHero}
+        durationInFrames={30 * 43} // ~43s: 6+6+8+(5×3)+8
         fps={30}
-        width={1920}
-        height={1080}
-        schema={myCompSchema2}
-        defaultProps={{
-          logoColor1: "#91dAE2" as const,
-          logoColor2: "#86A8E7" as const,
-        }}
+        width={1080}
+        height={1920}
+        schema={randyLewisSchema}
+        defaultProps={randyDefaultProps}
       />
     </>
   );
