@@ -11,348 +11,554 @@ import {
 } from 'remotion';
 import {z} from 'zod';
 
-// --- SCHEMA ---
+// ─── SCHEMA ────────────────────────────────────────────────────────────────
+
 export const randyLewisSchema = z.object({
   problemStatement: z.string(),
   mistakenAssumption: z.string(),
+  stats: z.array(z.object({value: z.string(), label: z.string()})),
   testimonials: z.array(
     z.object({
       quote: z.string(),
       author: z.string(),
+      outcome: z.string(),
     })
   ),
   offerHighlight: z.string(),
   phoneNumber: z.string(),
   bilingual: z.boolean(),
+  primaryColor: z.string(),
+  accentColor: z.string(),
 });
 
 export type RandyLewisProps = z.infer<typeof randyLewisSchema>;
 
 export const defaultProps: RandyLewisProps = {
-  problemStatement: "You're facing charges — here's the mistake most people make.",
+  problemStatement: "You're facing charges —\nhere's the mistake\nmost people make.",
   mistakenAssumption:
-    'Most people hire the first "affordable" attorney they find. Junior lawyers settle fast. You pay the price — with your freedom.',
+    'Most people hire the first "affordable" attorney they find. Junior lawyers settle fast. You pay with your freedom.',
+  stats: [
+    {value: '500+', label: 'Cases Won'},
+    {value: '95%', label: 'Success Rate'},
+    {value: '24/7', label: 'Available'},
+  ],
   testimonials: [
     {
       quote: 'Randy got my charges completely dismissed. I thought my life was over.',
-      author: 'M.R., Newark — Criminal Defense',
+      author: 'M.R. — Newark',
+      outcome: 'Charges Dismissed',
     },
     {
-      quote: 'He saved me $20,000 in fines and kept me out of jail. Unbelievable.',
-      author: 'J.T., Essex County — Traffic Violation',
+      quote: 'He saved me $20,000 in fines and kept me out of jail.',
+      author: 'J.T. — Essex County',
+      outcome: '$20K Saved',
     },
     {
       quote: 'Available at 2am when I was arrested. Charges dropped by morning.',
-      author: 'D.L., Newark — DUI Defense',
+      author: 'D.L. — Newark',
+      outcome: 'DUI Dismissed',
     },
   ],
   offerHighlight: 'Free consultation. No fee unless we win.',
   phoneNumber: '973-297-4440',
   bilingual: true,
+  primaryColor: '#0a2540',
+  accentColor: '#c9a75d',
 };
 
-// --- COLORS ---
-const NAVY = '#0a2540';
-const GOLD = '#c9a75d';
+// ─── CONSTANTS ─────────────────────────────────────────────────────────────
+
 const WHITE = '#ffffff';
+const RED = '#e74c3c';
 const FONT = 'Arial, Helvetica, sans-serif';
 
-// --- HELPERS ---
-const fadeIn = (frame: number, start: number, duration = 20) =>
-  interpolate(frame, [start, start + duration], [0, 1], {
+// ─── ANIMATION HELPERS ─────────────────────────────────────────────────────
+
+const spr = (frame: number, fps: number, delay = 0, damping = 20, stiffness = 100) =>
+  spring({frame: frame - delay, fps, config: {damping, stiffness}});
+
+const fade = (frame: number, start: number, dur = 18) =>
+  interpolate(frame, [start, start + dur], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
 
-const slideUp = (frame: number, fps: number, delay: number) =>
-  spring({frame: frame - delay, fps, config: {damping: 20, stiffness: 100}});
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
-// --- SUB-COMPONENTS ---
+// ─── ANIMATED BACKGROUND ───────────────────────────────────────────────────
 
-const PatternInterrupt: React.FC<{text: string; frame: number; fps: number}> = ({
-  text,
-  frame,
-  fps,
-}) => {
-  const y = interpolate(slideUp(frame, fps, 10), [0, 1], [40, 0]);
-  const opacity = fadeIn(frame, 10);
+const AnimatedBg: React.FC<{
+  frame: number;
+  primary: string;
+  accent: string;
+  variant?: 'dark' | 'darker' | 'problem';
+}> = ({frame, primary, accent, variant = 'dark'}) => {
+  const bg =
+    variant === 'problem'
+      ? 'linear-gradient(160deg, #100a0a 0%, #1a0505 100%)'
+      : variant === 'darker'
+      ? 'linear-gradient(160deg, #0a1520 0%, #050d14 100%)'
+      : `linear-gradient(160deg, ${primary} 0%, #061828 100%)`;
+
+  // Slow drift: subtle parallax on background lines
+  const drift = interpolate(frame, [0, 300], [0, -12], {
+    extrapolateRight: 'clamp',
+  });
+
   return (
-    <AbsoluteFill
-      style={{
-        background: `linear-gradient(160deg, ${NAVY} 0%, #061828 100%)`,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '0 60px',
-      }}
-    >
+    <AbsoluteFill style={{background: bg, overflow: 'hidden'}}>
+      {/* Grid lines */}
       <div
         style={{
-          color: GOLD,
-          fontFamily: FONT,
-          fontSize: 28,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: 3,
-          opacity: fadeIn(frame, 0),
-          marginBottom: 24,
+          position: 'absolute',
+          inset: 0,
+          backgroundImage: `
+            linear-gradient(rgba(201,167,93,0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(201,167,93,0.05) 1px, transparent 1px)
+          `,
+          backgroundSize: '80px 80px',
+          transform: `translateY(${drift}px)`,
         }}
-      >
-        STOP — READ THIS FIRST
-      </div>
+      />
+      {/* Radial vignette */}
       <div
         style={{
-          color: WHITE,
-          fontFamily: FONT,
-          fontSize: 52,
-          fontWeight: 800,
-          textAlign: 'center',
-          lineHeight: 1.15,
-          opacity,
-          transform: `translateY(${y}px)`,
+          position: 'absolute',
+          inset: 0,
+          background:
+            'radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(0,0,0,0.55) 100%)',
         }}
-      >
-        {text}
-      </div>
+      />
+      {/* Accent glow orb */}
+      <div
+        style={{
+          position: 'absolute',
+          width: 500,
+          height: 500,
+          borderRadius: '50%',
+          background: `radial-gradient(circle, ${accent}18 0%, transparent 70%)`,
+          top: -100,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          filter: 'blur(40px)',
+        }}
+      />
     </AbsoluteFill>
   );
 };
 
-const MistakeSlide: React.FC<{text: string; frame: number; fps: number}> = ({
-  text,
-  frame,
-  fps,
-}) => {
-  const opacity = fadeIn(frame, 5);
-  const scaleVal = interpolate(slideUp(frame, fps, 5), [0, 1], [0.96, 1]);
-  return (
-    <AbsoluteFill
-      style={{
-        backgroundColor: '#0d0d0d',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '0 60px',
-      }}
-    >
-      <div
-        style={{
-          borderLeft: `6px solid #e74c3c`,
-          paddingLeft: 32,
-          opacity,
-          transform: `scale(${scaleVal})`,
-        }}
-      >
-        <div
-          style={{
-            color: '#e74c3c',
-            fontFamily: FONT,
-            fontSize: 22,
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: 2,
-            marginBottom: 16,
-          }}
-        >
-          THE MISTAKE
-        </div>
-        <div
-          style={{
-            color: WHITE,
-            fontFamily: FONT,
-            fontSize: 44,
-            fontWeight: 700,
-            lineHeight: 1.25,
-          }}
-        >
-          {text}
-        </div>
-      </div>
-    </AbsoluteFill>
-  );
-};
+// ─── SEQUENCE 1: PATTERN INTERRUPT ─────────────────────────────────────────
 
-const GuideSlide: React.FC<{frame: number; fps: number; bilingual: boolean}> = ({
-  frame,
-  fps,
-  bilingual,
-}) => {
-  const photoOpacity = fadeIn(frame, 10, 30);
-  const textOpacity = fadeIn(frame, 30);
-  const badgeScale = interpolate(slideUp(frame, fps, 40), [0, 1], [0.8, 1]);
-  return (
-    <AbsoluteFill
-      style={{
-        background: `linear-gradient(160deg, ${NAVY} 0%, #061828 100%)`,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '0 60px',
-        flexDirection: 'column',
-        gap: 32,
-      }}
-    >
-      <div style={{opacity: photoOpacity}}>
-        <Img
-          src={staticFile('images/randy-lewis-headshot.jpg')}
-          style={{
-            width: 200,
-            height: 200,
-            borderRadius: '50%',
-            border: `5px solid ${GOLD}`,
-            objectFit: 'cover',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
-          }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
-        />
-      </div>
-      <div style={{opacity: textOpacity, textAlign: 'center'}}>
-        <div
-          style={{
-            color: GOLD,
-            fontFamily: FONT,
-            fontSize: 22,
-            fontWeight: 600,
-            letterSpacing: 2,
-            marginBottom: 8,
-          }}
-        >
-          YOUR GUIDE
-        </div>
-        <div
-          style={{color: WHITE, fontFamily: FONT, fontSize: 52, fontWeight: 800}}
-        >
-          Randy E. Lewis, Esq.
-        </div>
-        <div
-          style={{
-            color: 'rgba(255,255,255,0.7)',
-            fontFamily: FONT,
-            fontSize: 28,
-            marginTop: 8,
-          }}
-        >
-          Criminal Defense · Newark, NJ
-        </div>
-        {bilingual && (
-          <div
-            style={{
-              color: GOLD,
-              fontFamily: FONT,
-              fontSize: 22,
-              marginTop: 12,
-              opacity: 0.9,
-            }}
-          >
-            Habla Español · Falamos Português
-          </div>
-        )}
-      </div>
-      <div
-        style={{
-          display: 'flex',
-          gap: 24,
-          transform: `scale(${badgeScale})`,
-          flexWrap: 'wrap',
-          justifyContent: 'center',
-        }}
-      >
-        {['24/7 Emergency Response', 'Free Case Review', 'No Fee Unless We Win'].map(
-          (label) => (
-            <div
-              key={label}
-              style={{
-                backgroundColor: 'rgba(201,167,93,0.15)',
-                border: `1px solid ${GOLD}`,
-                borderRadius: 30,
-                padding: '10px 24px',
-                color: WHITE,
-                fontFamily: FONT,
-                fontSize: 18,
-                fontWeight: 600,
-              }}
-            >
-              {label}
-            </div>
-          )
-        )}
-      </div>
-    </AbsoluteFill>
-  );
-};
-
-const TestimonialSlide: React.FC<{
-  quote: string;
-  author: string;
+const PatternInterrupt: React.FC<{
+  text: string;
   frame: number;
   fps: number;
-}> = ({quote, author, frame, fps}) => {
-  const opacity = fadeIn(frame, 5, 25);
-  const y = interpolate(slideUp(frame, fps, 5), [0, 1], [30, 0]);
+  accent: string;
+  primary: string;
+}> = ({text, frame, fps, accent, primary}) => {
+  const lines = text.split('\n');
+
+  const labelOpacity = fade(frame, 0, 15);
+  const lineWidth = interpolate(frame, [8, 35], [0, 100], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+
   return (
-    <AbsoluteFill
-      style={{
-        background: `linear-gradient(135deg, #0f1923 0%, #162030 100%)`,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '0 64px',
-        flexDirection: 'column',
-      }}
-    >
-      <div
-        style={{
-          color: GOLD,
-          fontFamily: FONT,
-          fontSize: 120,
-          lineHeight: 0.5,
-          opacity: 0.4,
-          alignSelf: 'flex-start',
-        }}
-      >
-        "
-      </div>
-      <div
-        style={{
-          opacity,
-          transform: `translateY(${y}px)`,
-          textAlign: 'center',
-        }}
-      >
+    <AbsoluteFill style={{justifyContent: 'center', alignItems: 'center', padding: '0 72px'}}>
+      <AnimatedBg frame={frame} primary={primary} accent={accent} />
+
+      <div style={{position: 'relative', zIndex: 1, width: '100%'}}>
+        {/* Super-label */}
         <div
           style={{
-            color: WHITE,
+            color: accent,
             fontFamily: FONT,
-            fontSize: 44,
-            fontWeight: 600,
-            lineHeight: 1.3,
-            fontStyle: 'italic',
-            marginBottom: 32,
-          }}
-        >
-          {quote}
-        </div>
-        <div
-          style={{
-            color: GOLD,
-            fontFamily: FONT,
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: 700,
-            letterSpacing: 1,
+            letterSpacing: 4,
+            textTransform: 'uppercase',
+            opacity: labelOpacity,
+            marginBottom: 20,
+            textAlign: 'center',
           }}
         >
-          — {author}
+          ⚠ STOP — READ THIS FIRST
         </div>
+
+        {/* Gold line draw-in */}
+        <div
+          style={{
+            height: 3,
+            backgroundColor: accent,
+            width: `${lineWidth}%`,
+            marginBottom: 32,
+            borderRadius: 2,
+          }}
+        />
+
+        {/* Headline lines staggered */}
+        {lines.map((line, i) => {
+          const delay = 12 + i * 14;
+          const y = interpolate(spr(frame, fps, delay), [0, 1], [36, 0]);
+          const opacity = fade(frame, delay, 16);
+          return (
+            <div
+              key={i}
+              style={{
+                color: i === lines.length - 1 ? accent : WHITE,
+                fontFamily: FONT,
+                fontSize: 58,
+                fontWeight: 900,
+                lineHeight: 1.1,
+                textAlign: 'center',
+                opacity,
+                transform: `translateY(${y}px)`,
+                textShadow: '0 3px 16px rgba(0,0,0,0.5)',
+                marginBottom: 4,
+              }}
+            >
+              {line}
+            </div>
+          );
+        })}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ─── SEQUENCE 2: THE MISTAKE ────────────────────────────────────────────────
+
+const MistakeSlide: React.FC<{
+  text: string;
+  frame: number;
+  fps: number;
+  accent: string;
+  primary: string;
+}> = ({text, frame, fps, accent, primary}) => {
+  const iconScale = spr(frame, fps, 5, 12, 150);
+  const iconOpacity = fade(frame, 5, 12);
+  const cardY = interpolate(spr(frame, fps, 18), [0, 1], [40, 0]);
+  const cardOpacity = fade(frame, 18);
+  const borderH = interpolate(frame, [18, 50], [0, 100], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+
+  return (
+    <AbsoluteFill style={{justifyContent: 'center', alignItems: 'center', padding: '0 72px'}}>
+      <AnimatedBg frame={frame} primary={primary} accent={accent} variant="problem" />
+
+      <div style={{position: 'relative', zIndex: 1, width: '100%'}}>
+        {/* Warning badge */}
         <div
           style={{
             display: 'flex',
             justifyContent: 'center',
-            gap: 8,
-            marginTop: 24,
+            marginBottom: 36,
+            opacity: iconOpacity,
+            transform: `scale(${iconScale})`,
           }}
         >
-          {[...Array(5)].map((_, i) => (
-            <span key={i} style={{color: GOLD, fontSize: 28}}>
-              ★
+          <div
+            style={{
+              backgroundColor: `${RED}22`,
+              border: `2px solid ${RED}`,
+              borderRadius: 50,
+              padding: '12px 28px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            <span style={{fontSize: 28}}>⚠️</span>
+            <span
+              style={{
+                color: RED,
+                fontFamily: FONT,
+                fontSize: 22,
+                fontWeight: 700,
+                letterSpacing: 3,
+                textTransform: 'uppercase',
+              }}
+            >
+              THE MISTAKE
             </span>
+          </div>
+        </div>
+
+        {/* Quote card */}
+        <div
+          style={{
+            position: 'relative',
+            opacity: cardOpacity,
+            transform: `translateY(${cardY}px)`,
+          }}
+        >
+          {/* Animated left border */}
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: 5,
+              height: `${borderH}%`,
+              backgroundColor: RED,
+              borderRadius: 3,
+            }}
+          />
+          <div style={{paddingLeft: 36}}>
+            <div
+              style={{
+                color: WHITE,
+                fontFamily: FONT,
+                fontSize: 44,
+                fontWeight: 700,
+                lineHeight: 1.3,
+                textShadow: '0 2px 12px rgba(0,0,0,0.4)',
+              }}
+            >
+              {text}
+            </div>
+          </div>
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ─── SEQUENCE 3: GUIDE / RANDY ──────────────────────────────────────────────
+
+const StatBadge: React.FC<{
+  value: string;
+  label: string;
+  delay: number;
+  frame: number;
+  fps: number;
+  accent: string;
+}> = ({value, label, delay, frame, fps, accent}) => {
+  const scale = spr(frame, fps, delay, 18, 80);
+  const opacity = fade(frame, delay, 14);
+
+  // Counter animation for numeric values
+  const numericMatch = value.match(/^(\d+)(\+|%)?$/);
+  const displayValue = useMemo(() => {
+    if (!numericMatch) return value;
+    const target = parseInt(numericMatch[1], 10);
+    const suffix = numericMatch[2] || '';
+    const counted = Math.floor(
+      interpolate(frame, [delay, delay + 40], [0, target], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+      })
+    );
+    return `${counted}${suffix}`;
+  }, [frame, delay, numericMatch, value]);
+
+  return (
+    <div
+      style={{
+        opacity,
+        transform: `scale(${scale})`,
+        backgroundColor: 'rgba(10,37,64,0.85)',
+        border: `1.5px solid ${accent}`,
+        borderRadius: 20,
+        padding: '18px 28px',
+        textAlign: 'center',
+        backdropFilter: 'blur(8px)',
+        minWidth: 180,
+      }}
+    >
+      <div
+        style={{
+          color: accent,
+          fontFamily: FONT,
+          fontSize: 42,
+          fontWeight: 900,
+          lineHeight: 1,
+        }}
+      >
+        {displayValue}
+      </div>
+      <div
+        style={{
+          color: 'rgba(255,255,255,0.8)',
+          fontFamily: FONT,
+          fontSize: 18,
+          fontWeight: 600,
+          marginTop: 6,
+          letterSpacing: 1,
+          textTransform: 'uppercase',
+        }}
+      >
+        {label}
+      </div>
+    </div>
+  );
+};
+
+const GuideSlide: React.FC<{
+  stats: {value: string; label: string}[];
+  frame: number;
+  fps: number;
+  bilingual: boolean;
+  accent: string;
+  primary: string;
+}> = ({stats, frame, fps, bilingual, accent, primary}) => {
+  const photoScale = spr(frame, fps, 5, 18, 80);
+  const photoOpacity = fade(frame, 5, 20);
+  const nameOpacity = fade(frame, 28);
+  const nameY = interpolate(spr(frame, fps, 28), [0, 1], [20, 0]);
+
+  return (
+    <AbsoluteFill
+      style={{
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '60px 72px',
+        flexDirection: 'column',
+        gap: 0,
+      }}
+    >
+      <AnimatedBg frame={frame} primary={primary} accent={accent} variant="darker" />
+
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          width: '100%',
+        }}
+      >
+        {/* Super-label */}
+        <div
+          style={{
+            color: accent,
+            fontFamily: FONT,
+            fontSize: 20,
+            fontWeight: 700,
+            letterSpacing: 4,
+            textTransform: 'uppercase',
+            opacity: fade(frame, 0, 15),
+            marginBottom: 28,
+          }}
+        >
+          YOUR GUIDE
+        </div>
+
+        {/* Photo with layered rings */}
+        <div
+          style={{
+            position: 'relative',
+            opacity: photoOpacity,
+            transform: `scale(${photoScale})`,
+            marginBottom: 28,
+          }}
+        >
+          {/* Outer glow ring */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: -8,
+              borderRadius: '50%',
+              border: `2px solid ${accent}44`,
+            }}
+          />
+          {/* Main gold ring */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: -4,
+              borderRadius: '50%',
+              border: `3px solid ${accent}`,
+            }}
+          />
+          <Img
+            src={staticFile('images/randy-lewis-headshot.jpg')}
+            style={{
+              width: 220,
+              height: 220,
+              borderRadius: '50%',
+              objectFit: 'cover',
+              display: 'block',
+              boxShadow: `0 12px 48px rgba(0,0,0,0.6), 0 0 0 4px ${accent}`,
+            }}
+            onError={(e) => {
+              const el = e.target as HTMLImageElement;
+              el.style.display = 'none';
+            }}
+          />
+        </div>
+
+        {/* Name + title */}
+        <div
+          style={{
+            opacity: nameOpacity,
+            transform: `translateY(${nameY}px)`,
+            textAlign: 'center',
+            marginBottom: 36,
+          }}
+        >
+          <div
+            style={{
+              color: WHITE,
+              fontFamily: FONT,
+              fontSize: 52,
+              fontWeight: 900,
+              lineHeight: 1.05,
+              textShadow: '0 2px 12px rgba(0,0,0,0.4)',
+            }}
+          >
+            Randy E. Lewis, Esq.
+          </div>
+          <div
+            style={{
+              color: 'rgba(255,255,255,0.65)',
+              fontFamily: FONT,
+              fontSize: 24,
+              fontWeight: 500,
+              marginTop: 8,
+            }}
+          >
+            Criminal Defense · Personal Injury · Newark, NJ
+          </div>
+          {bilingual && (
+            <div
+              style={{
+                color: accent,
+                fontFamily: FONT,
+                fontSize: 20,
+                fontWeight: 600,
+                marginTop: 10,
+                opacity: 0.9,
+              }}
+            >
+              Habla Español · Falamos Português
+            </div>
+          )}
+        </div>
+
+        {/* Stat badges */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 20,
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+          }}
+        >
+          {stats.map((s, i) => (
+            <StatBadge
+              key={i}
+              value={s.value}
+              label={s.label}
+              delay={42 + i * 12}
+              frame={frame}
+              fps={fps}
+              accent={accent}
+            />
           ))}
         </div>
       </div>
@@ -360,184 +566,411 @@ const TestimonialSlide: React.FC<{
   );
 };
 
+// ─── SEQUENCE 4: TESTIMONIAL CARD ──────────────────────────────────────────
+
+const TestimonialCard: React.FC<{
+  quote: string;
+  author: string;
+  outcome: string;
+  frame: number;
+  fps: number;
+  accent: string;
+  primary: string;
+}> = ({quote, author, outcome, frame, fps, accent, primary}) => {
+  const cardScale = spr(frame, fps, 5, 18, 80);
+  const cardOpacity = fade(frame, 5, 20);
+  const starsOpacity = fade(frame, 28, 20);
+  const outcomeBadgeScale = spr(frame, fps, 35, 15, 120);
+
+  return (
+    <AbsoluteFill style={{justifyContent: 'center', alignItems: 'center', padding: '0 60px'}}>
+      <AnimatedBg frame={frame} primary={primary} accent={accent} variant="darker" />
+
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          width: '100%',
+          opacity: cardOpacity,
+          transform: `scale(${cardScale})`,
+        }}
+      >
+        {/* Card */}
+        <div
+          style={{
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            border: `1.5px solid ${accent}55`,
+            borderRadius: 24,
+            padding: '48px 52px',
+            backdropFilter: 'blur(12px)',
+            boxShadow: `0 24px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)`,
+          }}
+        >
+          {/* Quote mark */}
+          <div
+            style={{
+              color: accent,
+              fontFamily: 'Georgia, serif',
+              fontSize: 100,
+              lineHeight: 0.6,
+              opacity: 0.35,
+              marginBottom: 20,
+            }}
+          >
+            "
+          </div>
+
+          {/* Quote text */}
+          <div
+            style={{
+              color: WHITE,
+              fontFamily: FONT,
+              fontSize: 42,
+              fontWeight: 600,
+              lineHeight: 1.35,
+              fontStyle: 'italic',
+              marginBottom: 36,
+              textShadow: '0 1px 8px rgba(0,0,0,0.3)',
+            }}
+          >
+            {quote}
+          </div>
+
+          {/* Stars */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 6,
+              marginBottom: 20,
+              opacity: starsOpacity,
+            }}
+          >
+            {[...Array(5)].map((_, i) => (
+              <span key={i} style={{color: accent, fontSize: 32}}>
+                ★
+              </span>
+            ))}
+          </div>
+
+          {/* Author + outcome badge */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 16,
+            }}
+          >
+            <div
+              style={{
+                color: 'rgba(255,255,255,0.7)',
+                fontFamily: FONT,
+                fontSize: 22,
+                fontWeight: 600,
+              }}
+            >
+              — {author}
+            </div>
+
+            <div
+              style={{
+                transform: `scale(${outcomeBadgeScale})`,
+                backgroundColor: `${accent}22`,
+                border: `1.5px solid ${accent}`,
+                borderRadius: 30,
+                padding: '8px 22px',
+                color: accent,
+                fontFamily: FONT,
+                fontSize: 18,
+                fontWeight: 700,
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+              }}
+            >
+              ✓ {outcome}
+            </div>
+          </div>
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ─── SEQUENCE 5: CTA ────────────────────────────────────────────────────────
+
 const CTASlide: React.FC<{
   offerHighlight: string;
   phoneNumber: string;
   bilingual: boolean;
   frame: number;
   fps: number;
-}> = ({offerHighlight, phoneNumber, bilingual, frame, fps}) => {
-  const pulse = Math.sin(frame / 15) * 0.02 + 1;
-  const opacity = fadeIn(frame, 5);
-  const btnScale = interpolate(slideUp(frame, fps, 20), [0, 1], [0.9, 1]);
+  accent: string;
+  primary: string;
+}> = ({offerHighlight, phoneNumber, bilingual, frame, fps, accent, primary}) => {
+  const headlineOpacity = fade(frame, 5);
+  const headlineY = interpolate(spr(frame, fps, 5), [0, 1], [24, 0]);
+  const btnScale = spr(frame, fps, 20, 12, 150);
+  const pulse = Math.sin(frame / 14) * 0.018 + 1;
+  const glowOpacity = interpolate(Math.sin(frame / 14), [-1, 1], [0.3, 0.7]);
+
   return (
     <AbsoluteFill
       style={{
-        background: `linear-gradient(160deg, ${NAVY} 0%, #061828 100%)`,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: '0 60px',
+        padding: '0 72px',
         flexDirection: 'column',
         gap: 40,
       }}
     >
-      <div style={{opacity, textAlign: 'center'}}>
-        <div
-          style={{
-            color: WHITE,
-            fontFamily: FONT,
-            fontSize: 58,
-            fontWeight: 800,
-            lineHeight: 1.1,
-            marginBottom: 16,
-          }}
-        >
-          Your Future
-          <br />
-          <span style={{color: GOLD}}>Can't Wait.</span>
-        </div>
-        <div
-          style={{
-            color: 'rgba(255,255,255,0.75)',
-            fontFamily: FONT,
-            fontSize: 26,
-          }}
-        >
-          {offerHighlight}
-        </div>
-      </div>
+      <AnimatedBg frame={frame} primary={primary} accent={accent} />
 
       <div
         style={{
-          transform: `scale(${btnScale * pulse})`,
-          backgroundColor: GOLD,
-          borderRadius: 60,
-          padding: '28px 48px',
-          textAlign: 'center',
-          boxShadow: `0 0 40px rgba(201,167,93,0.4)`,
-          cursor: 'pointer',
-          width: '85%',
-          maxWidth: 560,
+          position: 'relative',
+          zIndex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 36,
+          width: '100%',
         }}
       >
+        {/* Headline */}
         <div
           style={{
-            color: NAVY,
-            fontFamily: FONT,
-            fontSize: 20,
-            fontWeight: 700,
-            letterSpacing: 2,
-            textTransform: 'uppercase',
-            marginBottom: 6,
+            opacity: headlineOpacity,
+            transform: `translateY(${headlineY}px)`,
+            textAlign: 'center',
           }}
         >
-          Call Randy Directly — 24/7
-        </div>
-        <div
-          style={{color: NAVY, fontFamily: FONT, fontSize: 44, fontWeight: 900}}
-        >
-          {phoneNumber}
-        </div>
-        {bilingual && (
           <div
             style={{
-              color: NAVY,
+              color: WHITE,
               fontFamily: FONT,
-              fontSize: 18,
-              marginTop: 8,
-              opacity: 0.75,
+              fontSize: 64,
+              fontWeight: 900,
+              lineHeight: 1.05,
+              textShadow: '0 3px 20px rgba(0,0,0,0.5)',
             }}
           >
-            Habla Español · Falamos Português
+            Your Future
           </div>
-        )}
-      </div>
+          <div
+            style={{
+              color: accent,
+              fontFamily: FONT,
+              fontSize: 64,
+              fontWeight: 900,
+              lineHeight: 1.05,
+              textShadow: `0 0 40px ${accent}66`,
+            }}
+          >
+            Can't Wait.
+          </div>
+          <div
+            style={{
+              color: 'rgba(255,255,255,0.65)',
+              fontFamily: FONT,
+              fontSize: 26,
+              fontWeight: 400,
+              marginTop: 16,
+            }}
+          >
+            {offerHighlight}
+          </div>
+        </div>
 
-      <div
-        style={{
-          color: 'rgba(255,255,255,0.5)',
-          fontFamily: FONT,
-          fontSize: 18,
-          textAlign: 'center',
-          opacity,
-        }}
-      >
-        thelewislawyer.com · Newark, NJ
+        {/* CTA Button */}
+        <div style={{position: 'relative', width: '90%', maxWidth: 580}}>
+          {/* Glow behind button */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: -16,
+              borderRadius: 70,
+              background: `radial-gradient(ellipse, ${accent}${Math.round(glowOpacity * 255).toString(16).padStart(2, '0')} 0%, transparent 70%)`,
+              filter: 'blur(20px)',
+            }}
+          />
+          <div
+            style={{
+              position: 'relative',
+              transform: `scale(${btnScale * pulse})`,
+              backgroundColor: accent,
+              borderRadius: 60,
+              padding: '32px 48px',
+              textAlign: 'center',
+              boxShadow: `0 8px 40px ${accent}55, 0 2px 0 rgba(255,255,255,0.2) inset`,
+              cursor: 'pointer',
+            }}
+          >
+            <div
+              style={{
+                color: primary,
+                fontFamily: FONT,
+                fontSize: 20,
+                fontWeight: 700,
+                letterSpacing: 3,
+                textTransform: 'uppercase',
+                marginBottom: 8,
+                opacity: 0.8,
+              }}
+            >
+              Call Randy Directly — 24/7
+            </div>
+            <div
+              style={{
+                color: primary,
+                fontFamily: FONT,
+                fontSize: 52,
+                fontWeight: 900,
+                lineHeight: 1,
+                letterSpacing: 1,
+              }}
+            >
+              {phoneNumber}
+            </div>
+            {bilingual && (
+              <div
+                style={{
+                  color: primary,
+                  fontFamily: FONT,
+                  fontSize: 18,
+                  fontWeight: 500,
+                  marginTop: 10,
+                  opacity: 0.65,
+                }}
+              >
+                Habla Español · Falamos Português
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            color: 'rgba(255,255,255,0.35)',
+            fontFamily: FONT,
+            fontSize: 18,
+            textAlign: 'center',
+            opacity: fade(frame, 40),
+          }}
+        >
+          thelewislawyer.com · Newark, NJ
+        </div>
       </div>
     </AbsoluteFill>
   );
 };
 
-// --- MAIN COMPOSITION ---
-export const RandyLewisHero: React.FC<RandyLewisProps> = ({
-  problemStatement,
-  mistakenAssumption,
-  testimonials,
-  offerHighlight,
-  phoneNumber,
-  bilingual,
-}) => {
+// ─── MAIN COMPOSITION ───────────────────────────────────────────────────────
+
+export const RandyLewisHero: React.FC<RandyLewisProps> = (props) => {
+  const {
+    problemStatement,
+    mistakenAssumption,
+    stats,
+    testimonials,
+    offerHighlight,
+    phoneNumber,
+    bilingual,
+    primaryColor,
+    accentColor,
+  } = props;
+
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
 
-  const INTRO_DUR = fps * 6;       // 0–6s
-  const MISTAKE_DUR = fps * 6;     // 6–12s
-  const GUIDE_DUR = fps * 8;       // 12–20s
-  const TESTI_DUR = fps * 5;       // 5s each
-  const CTA_DUR = fps * 8;         // last 8s
+  // StoryBrand pacing from expertise.md:
+  // pattern interrupt (3s) → problem (4s) → guide (5s) → testimonials (10s) → CTA (3s)
+  const S1 = fps * 5;                                       // 0–5s   pattern interrupt
+  const S2 = fps * 6;                                       // 5–11s  the mistake
+  const S3 = fps * 8;                                       // 11–19s guide
+  const TESTI_DUR = fps * 5;                                // 5s per testimonial
+  const shown = useMemo(() => testimonials.slice(0, 3), [testimonials]);
+  const S4_TOTAL = TESTI_DUR * shown.length;               // 19–34s testimonials
+  const S5 = fps * 8;                                       // 34–42s CTA
 
-  const testimonialsToShow = useMemo(() => testimonials.slice(0, 3), [testimonials]);
-  const totalTestiDur = TESTI_DUR * testimonialsToShow.length;
-  const ctaStart = INTRO_DUR + MISTAKE_DUR + GUIDE_DUR + totalTestiDur;
+  const t2 = S1;
+  const t3 = t2 + S2;
+  const t4 = t3 + S3;
+  const t5 = t4 + S4_TOTAL;
+  const totalFrames = t5 + S5;
+
+  // Local frame within each sequence
+  const f1 = frame;
+  const f2 = frame - t2;
+  const f3 = frame - t3;
+  const f5 = frame - t5;
 
   return (
-    <AbsoluteFill style={{backgroundColor: NAVY}}>
-      {/* SEQUENCE 1: Pattern interrupt */}
-      <Sequence from={0} durationInFrames={INTRO_DUR}>
-        <PatternInterrupt text={problemStatement} frame={frame} fps={fps} />
+    <AbsoluteFill style={{backgroundColor: primaryColor}}>
+      {/* S1: Pattern interrupt */}
+      <Sequence from={0} durationInFrames={S1}>
+        <PatternInterrupt
+          text={problemStatement}
+          frame={f1}
+          fps={fps}
+          accent={accentColor}
+          primary={primaryColor}
+        />
       </Sequence>
 
-      {/* SEQUENCE 2: The mistake */}
-      <Sequence from={INTRO_DUR} durationInFrames={MISTAKE_DUR}>
+      {/* S2: The mistake */}
+      <Sequence from={t2} durationInFrames={S2}>
         <MistakeSlide
           text={mistakenAssumption}
-          frame={frame - INTRO_DUR}
+          frame={f2}
           fps={fps}
+          accent={accentColor}
+          primary={primaryColor}
         />
       </Sequence>
 
-      {/* SEQUENCE 3: Guide introduction */}
-      <Sequence from={INTRO_DUR + MISTAKE_DUR} durationInFrames={GUIDE_DUR}>
+      {/* S3: Guide */}
+      <Sequence from={t3} durationInFrames={S3}>
         <GuideSlide
-          frame={frame - INTRO_DUR - MISTAKE_DUR}
+          stats={stats}
+          frame={f3}
           fps={fps}
           bilingual={bilingual}
+          accent={accentColor}
+          primary={primaryColor}
         />
       </Sequence>
 
-      {/* SEQUENCE 4: Testimonials */}
-      {testimonialsToShow.map((t, i) => {
-        const start = INTRO_DUR + MISTAKE_DUR + GUIDE_DUR + i * TESTI_DUR;
+      {/* S4: Testimonials */}
+      {shown.map((t, i) => {
+        const start = t4 + i * TESTI_DUR;
+        const localFrame = frame - start;
         return (
           <Sequence key={i} from={start} durationInFrames={TESTI_DUR}>
-            <TestimonialSlide
+            <TestimonialCard
               quote={t.quote}
               author={t.author}
-              frame={frame - start}
+              outcome={t.outcome}
+              frame={localFrame}
               fps={fps}
+              accent={accentColor}
+              primary={primaryColor}
             />
           </Sequence>
         );
       })}
 
-      {/* SEQUENCE 5: CTA */}
-      <Sequence from={ctaStart} durationInFrames={CTA_DUR}>
+      {/* S5: CTA */}
+      <Sequence from={t5} durationInFrames={S5}>
         <CTASlide
           offerHighlight={offerHighlight}
           phoneNumber={phoneNumber}
           bilingual={bilingual}
-          frame={frame - ctaStart}
+          frame={f5}
           fps={fps}
+          accent={accentColor}
+          primary={primaryColor}
         />
       </Sequence>
     </AbsoluteFill>
